@@ -1,13 +1,18 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Get references to DOM elements
     const categorySelect = document.getElementById('category-select');
     const columnSelect = document.getElementById('column-select'); 
     const itemsList = document.getElementById('items-list');
     
-    // Charger les catégories disponibles
+    // Load available categories from the server
     fetch('/get_categories')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Reset and add default option to category dropdown
+                categorySelect.innerHTML = '<option value="">-- Choose a category --</option>';
+                
+                // Add each category as an option in the dropdown
                 data.categories.forEach(category => {
                     const option = document.createElement('option');
                     option.value = category;
@@ -20,78 +25,84 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => console.error('Fetch error:', error));
     
-    // Écouter les changements de sélection de catégorie
+    // Listen for category selection changes
     categorySelect.addEventListener('change', function() {
         const selectedCategory = this.value;
         
-        if (!selectedCategory) {
-            columnSelect.innerHTML = '<option value="">-- Sélectionnez une colonne --</option>';
-            itemsList.innerHTML = '';
-            return;
-        }
+        // Reset column dropdown and items list
+        columnSelect.innerHTML = '<option value="">-- Choose a column --</option>';
+        itemsList.innerHTML = '';
         
-        // Charger les colonnes disponibles pour cette catégorie
+        // Exit if no category is selected
+        if (!selectedCategory) return;
+        
+        // Prepare form data with the selected category
         const formData = new FormData();
         formData.append('category', selectedCategory);
         
-        fetch('/get_items', {
+        // Fetch available columns for the selected category
+        fetch('/get_columns', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
-            columnSelect.innerHTML = '<option value="">-- Sélectionnez une colonne --</option>';
-            
             if (data.success) {
+                // Add each column as an option in the dropdown
                 data.columns.forEach(column => {
                     const option = document.createElement('option');
                     option.value = column;
                     option.textContent = column;
                     columnSelect.appendChild(option);
                 });
+            } else {
+                console.error('Error loading columns:', data.error);
             }
         })
         .catch(error => console.error('Fetch error:', error));
     });
     
-    // Écouter les changements de sélection de colonne
+    // Listen for column selection changes
     columnSelect.addEventListener('change', function() {
         const selectedCategory = categorySelect.value;
         const selectedColumn = this.value;
         
-        if (!selectedCategory || !selectedColumn) {
-            itemsList.innerHTML = '';
-            return;
-        }
+        // Clear the items list
+        itemsList.innerHTML = '';
         
-        // Envoyer la requête pour obtenir les items
+        // Exit if no category or column is selected
+        if (!selectedCategory || !selectedColumn) return;
+        
+        // Prepare form data with the selected category and column
         const formData = new FormData();
         formData.append('category', selectedCategory);
         formData.append('column_name', selectedColumn);
         
+        // Fetch items from the selected column
         fetch('/get_items', {
             method: 'POST',
             body: formData
         })
         .then(response => response.json())
         .then(data => {
-            itemsList.innerHTML = '';
-            
             if (data.success) {
+                // Display each item in the list
                 data.items.forEach(item => {
                     const li = document.createElement('li');
                     li.textContent = item;
                     itemsList.appendChild(li);
                 });
             } else {
+                // Display error message if request failed
                 const li = document.createElement('li');
-                li.textContent = 'Erreur: ' + data.error;
+                li.textContent = 'Error: ' + data.error;
                 itemsList.appendChild(li);
             }
         })
         .catch(error => {
+            // Handle network or other errors
             console.error('Fetch error:', error);
-            itemsList.innerHTML = '<li>Erreur lors du chargement des données</li>';
+            itemsList.innerHTML = '<li>Error while loading data</li>';
         });
     });
 });
